@@ -35,6 +35,21 @@ jobs:
       - name: Build debug APK
         run: gradle assembleDebug --no-daemon
 
+      - name: Package project source
+        run: |
+          zip -r COPY-Android-Source.zip . \
+            -x ".git/*" "*/.git/*" ".gradle/*" "*/build/*" \
+               "local.properties" "*/local.properties" "*.jks" "*.keystore" \
+               ".env" ".env.*" "COPY-Android-Source.zip"
+
+      - name: Upload project source ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: COPY-Android-Source
+          path: COPY-Android-Source.zip
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
