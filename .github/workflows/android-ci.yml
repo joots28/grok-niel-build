@@ -57,3 +57,24 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 7
+
+  package-source:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package source without build outputs or secrets
+        run: |
+          zip -r COPY-Android-Source.zip . \
+            -x ".git/*" "*/.git/*" ".gradle/*" "*/build/*" \
+               "local.properties" "*/local.properties" "*.jks" "*.keystore" \
+               ".env" ".env.*" "COPY-Android-Source.zip"
+
+      - name: Upload source archive
+        uses: actions/upload-artifact@v4
+        with:
+          name: COPY-Android-Source
+          path: COPY-Android-Source.zip
+          if-no-files-found: error
+          retention-days: 7
