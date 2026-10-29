@@ -1,3 +1,5 @@
+import java.net.URL
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -80,7 +82,7 @@ val downloadBundledLocalAiModel by tasks.registering {
         val partial = target.resolveSibling(target.name + ".download")
         partial.delete()
 
-        val modelUrl = java.net.URL(
+        val modelUrl = URL(
             "https://huggingface.co/litert-community/Qwen3-0.6B/resolve/main/" +
                 "Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm?download=true"
         )
