@@ -644,7 +644,7 @@ private fun SettingsPage(
             Spacer(Modifier.width(5.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text("Permitir que a IA use minhas memórias", color = White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
-                Text("Desativado por padrão. Quando ativado, as notas salvas podem ser enviadas ao provedor junto com sua mensagem.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+                Text("Desativado por padrão. Quando ativado, suas notas podem ser usadas pelo modelo local e, se a IA local não estiver ativa, enviadas ao provedor online escolhido.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
             }
         }
         if (error != null || notice != null) {
@@ -671,7 +671,7 @@ private fun SettingsPage(
         TextButton(onClick = { endpointInput = ""; modelInput = ""; keyInput = ""; includeMemoriesInput = false; onSave("", "", "", false) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("Remover configuração", color = Muted, fontSize = 12.sp)
         }
-        Text("O COPY não inclui um modelo de IA pago. Você pode usar um provedor seu ou manter a experiência sem conexão externa.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp))
+        Text("A IA local não cobra por mensagem e funciona sem internet depois de preparada. O provedor online é opcional e pode ter limites ou custos próprios.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp))
     }
 }
 
