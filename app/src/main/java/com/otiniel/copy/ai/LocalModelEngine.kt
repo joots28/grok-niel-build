@@ -124,9 +124,21 @@ class LocalModelEngine(context: Context) {
         }
 
         val localEngine = getOrCreateEngine()
+        // Qwen3's chat template expects at least one initial message when a
+        // system instruction is provided. Seed a harmless local greeting on a
+        // brand-new conversation to avoid an empty-message template failure.
+        val safeInitialMessages = if (priorMessages.isEmpty()) {
+            listOf(
+                Message.user("Olá."),
+                Message.model("Olá! Sou o COPY, seu assistente pessoal.")
+            )
+        } else {
+            priorMessages
+        }
+
         val config = ConversationConfig(
             systemInstruction = Contents.of(systemInstruction),
-            initialMessages = priorMessages,
+            initialMessages = safeInitialMessages,
             samplerConfig = SamplerConfig(topK = 40, topP = 0.9, temperature = 0.7),
             maxOutputToken = MAX_OUTPUT_TOKENS,
             thinkingConfig = ThinkingConfig(enableThinking = false, thinkingTokenBudget = 0)
