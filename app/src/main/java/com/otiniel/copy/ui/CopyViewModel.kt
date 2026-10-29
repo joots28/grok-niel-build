@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.otiniel.copy.ai.EndpointUrl
 import com.otiniel.copy.ai.ModelRouter
+import com.otiniel.copy.ai.LocalModelEngine
 import com.otiniel.copy.data.ChatMessage
 import com.otiniel.copy.data.ConnectionSettings
 import com.otiniel.copy.data.CopyDatabase
@@ -20,7 +21,8 @@ import kotlinx.coroutines.withContext
 class CopyViewModel(application: Application) : AndroidViewModel(application) {
     private val database = CopyDatabase(application.applicationContext)
     private val secureSettingsStore = SecureSettingsStore(application.applicationContext)
-    private val modelRouter = ModelRouter()
+    private val localModelEngine = LocalModelEngine(application.applicationContext)
+    private val modelRouter = ModelRouter(localModelEngine = localModelEngine)
 
     private val _messages = MutableStateFlow<List<ChatMessage>>(emptyList())
     val messages: StateFlow<List<ChatMessage>> = _messages.asStateFlow()
@@ -40,12 +42,42 @@ class CopyViewModel(application: Application) : AndroidViewModel(application) {
     private val _notice = MutableStateFlow<String?>(null)
     val notice: StateFlow<String?> = _notice.asStateFlow()
 
+    private val _localModelReady = MutableStateFlow(localModelEngine.isPrepared())
+    val localModelReady: StateFlow<Boolean> = _localModelReady.asStateFlow()
+
+    private val _localModelPreparing = MutableStateFlow(false)
+    val localModelPreparing: StateFlow<Boolean> = _localModelPreparing.asStateFlow()
+
+    private val _localModelProgress = MutableStateFlow(0)
+    val localModelProgress: StateFlow<Int> = _localModelProgress.asStateFlow()
+
     init {
         viewModelScope.launch(Dispatchers.IO) {
             database.ensureWelcomeMessage()
             _messages.value = database.getMessages()
             _memories.value = database.getMemories()
             _settings.value = secureSettingsStore.load()
+        }
+    }
+
+    fun prepareLocalAi() {
+        if (_localModelPreparing.value || _localModelReady.value) return
+        _error.value = null
+        _notice.value = null
+        viewModelScope.launch(Dispatchers.IO) {
+            _localModelPreparing.value = true
+            _localModelProgress.value = 0
+            try {
+                localModelEngine.prepareBundledModel { percent ->
+                    _localModelProgress.value = percent
+                }
+                _localModelReady.value = true
+                _notice.value = "IA local ativada. O COPY pode conversar sem chave de API e sem internet."
+            } catch (error: Exception) {
+                _error.value = error.message ?: "Não foi possível preparar a IA local."
+            } finally {
+                _localModelPreparing.value = false
+            }
         }
     }
 
@@ -161,6 +193,6 @@ class CopyViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun userFriendlyError(error: Throwable): String {
         val message = error.message?.takeIf { it.isNotBlank() }
-        return "Falha no provedor: " + (message ?: "erro de comunicação. Verifique a configuração.")
+        return "COPY não conseguiu responder: " + (message ?: "erro inesperado. Verifique a configuração.")
     }
 }

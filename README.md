@@ -4,18 +4,20 @@ O COPY está sendo construído como um assistente Android nativo, com prioridade
 
 ## Estado desta base
 
-Esta branch cria a fundação executável do aplicativo. Ela não declara o projeto finalizado.
+Esta branch adiciona uma primeira versão funcional de inferência local. Ela ainda não representa o assistente completo.
 
 - Interface Android nativa em Kotlin + Jetpack Compose, com tema escuro azul.
+- Modelo Qwen3-0.6B quantizado, empacotado no APK para inferência no próprio aparelho via LiteRT-LM.
+- Chat local sem chave de API e sem conexão com a internet depois da instalação/preparação do modelo.
 - Histórico e memórias manuais salvos localmente em SQLite.
-- Configuração opcional de endpoint compatível com a API `/chat/completions`.
-- Credenciais cifradas com AES-GCM e chave gerenciada pelo Android Keystore.
+- Provedor HTTPS compatível com `/chat/completions` como opção alternativa caso a IA local ainda não tenha sido ativada.
+- Credenciais externas cifradas com AES-GCM e chave gerenciada pelo Android Keystore.
 - Validação de endpoint HTTPS e testes unitários para a validação.
 - Nenhuma chave de API incluída no repositório.
 
 ## O que ainda não está implementado
 
-- Inferência de modelo local diretamente no aparelho.
+- Voz contínua, ativação por palavra de comando e conversa falada.
 - Integração do núcleo Rust do Grok Build ao aplicativo Android.
 - Ferramentas Android reais (calendário, notificações, arquivos, acessibilidade e rotinas).
 - Permissões por capacidade, confirmações de ações e auditoria de execução.
@@ -29,7 +31,8 @@ Nenhuma ferramenta de sistema é executada pelo chat nesta etapa. O assistente n
 - `ui/`: estado de apresentação.
 - `data/CopyDatabase.kt`: histórico e memórias locais SQLite.
 - `data/SecureSettingsStore.kt`: configuração cifrada com Android Keystore.
-- `ai/ModelRouter.kt`: ponto de entrada para seleção do mecanismo de resposta.
+- `ai/ModelRouter.kt`: encaminha comandos locais, prioriza o modelo local preparado e só usa nuvem se ele não estiver preparado.
+- `ai/LocalModelEngine.kt`: gerencia cópia e inferência do modelo Qwen3-0.6B no dispositivo.
 - `ai/OpenAiCompatibleProvider.kt`: adaptador de rede opcional para provedores compatíveis.
 - `ai/EndpointUrl.kt`: validação e normalização do endpoint HTTPS.
 
@@ -60,14 +63,25 @@ gradlew.bat assembleDebug
 
 O workflow do GitHub Actions executa os testes unitários e a montagem do APK em cada push desta branch e em pull requests.
 
-## Configurar um provedor de IA
+## IA local incluída no APK
 
-Abra **Configurações** no aplicativo. Informe:
+A tarefa Gradle `downloadBundledLocalAiModel` obtém durante a compilação o arquivo quantizado `Qwen3-0.6B_dynamic_wi4b32_afp32.litertlm` do repositório público LiteRT Community e o inclui em `app/src/main/assets/models/`. O modelo não é versionado no Git para evitar colocar centenas de megabytes no histórico do repositório.
+
+O APK final fica aproximadamente 330 MB maior do que um APK sem pesos de modelo. Na primeira utilização, abra **Central de controle → Ativar IA local embutida**; o aplicativo copia os pesos para o armazenamento privado e prepara o runtime. Depois disso, o chat usa inferência local sem API key e sem internet. O modelo é pequeno e mais limitado do que serviços de nuvem maiores; o desempenho real depende do aparelho.
+
+O modelo Qwen3-0.6B publicado por LiteRT Community declara licença Apache-2.0 e oferece uma variante quantizada para dispositivos móveis:
+- Modelo: https://huggingface.co/litert-community/Qwen3-0.6B
+- Runtime: https://developers.google.com/edge/litert-lm/android
+- Licença do modelo: https://huggingface.co/litert-community/Qwen3-0.6B/blob/main/LICENSE
+
+## Provedor online opcional
+
+Se preferir usar um serviço externo, abra **Configurações** no aplicativo. Informe:
 1. Um endpoint HTTPS compatível com o formato de chat completions.
 2. O identificador do modelo que o provedor oferece.
 3. Uma chave de API somente se o provedor exigir autenticação.
 
-O aplicativo não exige um provedor pago específico. O custo e os limites são definidos pelo serviço que você escolher. As mensagens só são enviadas ao endpoint depois da configuração e do envio explícito de uma mensagem. Para apagar a configuração, deixe o endpoint vazio e salve.
+O aplicativo não exige provedor pago. Com a IA local ativada, o modelo local tem prioridade e as mensagens não são enviadas a um endpoint externo. O provedor online só é usado se a IA local ainda não estiver preparada. O compartilhamento de memórias com o provedor externo está desativado por padrão.
 
 Não coloque chaves, tokens, arquivos `.env` ou credenciais no GitHub.
 

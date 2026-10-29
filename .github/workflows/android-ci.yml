@@ -40,7 +40,8 @@ jobs:
           zip -r COPY-Android-Source.zip . \
             -x ".git/*" "*/.git/*" ".gradle/*" "*/build/*" \
                "local.properties" "*/local.properties" "*.jks" "*.keystore" \
-               ".env" ".env.*" "COPY-Android-Source.zip"
+               ".env" ".env.*" "COPY-Android-Source.zip" \
+               "app/src/main/assets/models/*.litertlm" "app/src/main/assets/models/*.download"
 
       - name: Upload project source ZIP
         uses: actions/upload-artifact@v4

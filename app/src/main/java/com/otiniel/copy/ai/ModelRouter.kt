@@ -5,10 +5,12 @@ import com.otiniel.copy.data.ConnectionSettings
 import com.otiniel.copy.data.MemoryEntry
 
 /**
- * Routes private commands locally and only sends opted-in memory to the remote model.
+ * Routes local commands first, then the bundled on-device model, and only uses
+ * a remote provider if no local model has been prepared on this device.
  */
 class ModelRouter(
-    private val remoteProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider()
+    private val remoteProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider(),
+    private val localModelEngine: LocalModelEngine? = null
 ) {
     suspend fun reply(
         settings: ConnectionSettings,
@@ -17,6 +19,13 @@ class ModelRouter(
     ): String {
         val latestUserMessage = transcript.lastOrNull { it.role == "user" }?.content.orEmpty()
         LocalAssistant.answerCommand(latestUserMessage, transcript, localMemories)?.let { return it }
+
+        // Once prepared, local inference has priority. An inference error is returned
+        // to the user; it must not silently send the same private conversation online.
+        if (localModelEngine?.isPrepared() == true) {
+            val memoriesForLocalModel = if (settings.includeMemories) localMemories else emptyList()
+            return localModelEngine.reply(transcript, memoriesForLocalModel)
+        }
 
         if (settings.endpoint.isBlank() || settings.model.isBlank()) {
             return LocalAssistant.offlineReply(latestUserMessage)
