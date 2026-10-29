@@ -153,6 +153,107 @@ ipcMain.handle("state:save", async (_event, input) => {
   return { success: true };
 });
 
+async function getOllamaStatus() {
+  try {
+    const response = await fetch("http://127.0.0.1:11434/api/tags", {
+      signal: AbortSignal.timeout(3500)
+    });
+    if (!response.ok) {
+      return { installedOrRunning: true, reachable: false, modelInstalled: false, models: [], error: `Ollama respondeu com HTTP ${response.status}.` };
+    }
+    const body = await response.json();
+    const models = Array.isArray(body.models) ? body.models.map((item) => String(item.name || "")) : [];
+    const modelInstalled = models.some((name) => name === "qwen2.5:3b" || name.startsWith("qwen2.5:3b-"));
+    return { installedOrRunning: true, reachable: true, modelInstalled, models };
+  } catch {
+    return { installedOrRunning: false, reachable: false, modelInstalled: false, models: [], error: "Ollama não respondeu em http://127.0.0.1:11434." };
+  }
+}
+
+function sendOllamaProgress(progress) {
+  for (const window of BrowserWindow.getAllWindows()) {
+    if (!window.isDestroyed()) window.webContents.send("ollama:progress", progress);
+  }
+}
+
+ipcMain.handle("ollama:status", async () => getOllamaStatus());
+
+ipcMain.handle("ollama:open-download", async () => {
+  await shell.openExternal("https://ollama.com/download/windows");
+  return { opened: true };
+});
+
+ipcMain.handle("ollama:pull-model", async (_event, modelInput) => {
+  const status = await getOllamaStatus();
+  if (!status.reachable) {
+    throw new Error("Ollama não está aberto. Instale pelo botão oficial e abra o aplicativo Ollama; depois tente novamente.");
+  }
+  const model = String(modelInput || "qwen2.5:3b").trim();
+  if (!/^[a-zA-Z0-9._:/-]{1,120}$/.test(model)) {
+    throw new Error("Identificador do modelo inválido.");
+  }
+  sendOllamaProgress({ phase: "starting", model, status: "Preparando download do modelo…", percent: 0 });
+  const response = await fetch("http://127.0.0.1:11434/api/pull", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model, stream: true }),
+    signal: AbortSignal.timeout(1000 * 60 * 60)
+  });
+  if (!response.ok || !response.body) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`Ollama não conseguiu iniciar o download (${response.status}). ${detail.slice(0, 300)}`);
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let latestStatus = "Download iniciado…";
+  let percent = 0;
+  let sawSuccess = false;
+  const processLine = (line) => {
+    if (!line.trim()) return;
+    let item;
+    try { item = JSON.parse(line); } catch { return; }
+    if (item.error) throw new Error(String(item.error));
+    latestStatus = String(item.status || latestStatus);
+    if (Number(item.total) > 0 && Number(item.completed) >= 0) {
+      percent = Math.max(0, Math.min(100, Math.round(Number(item.completed) / Number(item.total) * 100)));
+    }
+    if (latestStatus.toLowerCase() === "success") {
+      sawSuccess = true;
+      percent = 100;
+    }
+    sendOllamaProgress({
+      phase: sawSuccess ? "completed" : "downloading",
+      model,
+      status: latestStatus,
+      percent
+    });
+  };
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      const lines = buffer.split("\\n");
+      buffer = lines.pop() || "";
+      for (const line of lines) processLine(line);
+      if (done) break;
+    }
+    if (buffer.trim()) processLine(buffer);
+  } catch (error) {
+    sendOllamaProgress({ phase: "error", model, status: error.message || "O download falhou.", percent });
+    throw error;
+  }
+  if (!sawSuccess) {
+    const refreshed = await getOllamaStatus();
+    if (!refreshed.models.some((name) => name === model || name.startsWith(model + "-"))) {
+      throw new Error("O Ollama encerrou o download sem confirmar o modelo. Confira a conexão e tente novamente.");
+    }
+  }
+  sendOllamaProgress({ phase: "completed", model, status: "Modelo instalado e pronto para uso.", percent: 100 });
+  const refreshed = await getOllamaStatus();
+  return { success: true, model, status: refreshed };
+});
+
 ipcMain.handle("chat:send", async (_event, input) => {
   const settings = await readSettings();
   const endpoint = validateEndpoint(settings.endpoint);
@@ -203,7 +304,7 @@ ipcMain.handle("chat:send", async (_event, input) => {
   } catch (error) {
     if (error.name === "AbortError") throw new Error("A resposta demorou mais de 90 segundos. Verifique o modelo e tente novamente.");
     if (error instanceof TypeError) {
-      throw new Error("Não foi possível conectar à API. Verifique se o modelo local está ligado ou se o endpoint está correto.");
+      throw new Error("Não foi possível conectar à IA local. Abra Configurações → IA local, confira se o Ollama está instalado e em execução, e prepare o modelo gratuito qwen2.5:3b.");
     }
     throw error;
   } finally {
