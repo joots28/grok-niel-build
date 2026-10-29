@@ -145,7 +145,7 @@ class LocalModelEngine(context: Context) {
         )
 
         localEngine.createConversation(config).use { conversation ->
-            conversation.sendMessage(userText).text.trim().ifBlank {
+            conversation.sendMessage(userText).toString().trim().ifBlank {
                 "Não consegui gerar uma resposta útil. Tente reformular a mensagem."
             }
         }
