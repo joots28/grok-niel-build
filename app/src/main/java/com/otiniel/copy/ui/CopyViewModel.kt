@@ -62,7 +62,8 @@ class CopyViewModel(application: Application) : AndroidViewModel(application) {
                     database.ensureWelcomeMessage()
                     database.insertMessage("user", text)
                     _messages.value = database.getMessages()
-                    val result = runCatching { modelRouter.reply(_settings.value, _messages.value) }
+                    val localMemories = database.getMemories()
+                    val result = runCatching { modelRouter.reply(_settings.value, _messages.value, localMemories) }
                     result.onFailure { error ->
                         _error.value = userFriendlyError(error)
                     }.getOrElse { error ->
@@ -80,7 +81,10 @@ class CopyViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun saveSettings(endpoint: String, model: String, apiKey: String) {
+    fun saveSettings(endpoint: String, model: String, apiKey: String) =
+        saveSettings(endpoint, model, apiKey, _settings.value.includeMemories)
+
+    fun saveSettings(endpoint: String, model: String, apiKey: String, includeMemories: Boolean) {
         _error.value = null
         _notice.value = null
         viewModelScope.launch(Dispatchers.IO) {
@@ -94,7 +98,7 @@ class CopyViewModel(application: Application) : AndroidViewModel(application) {
                 val next = if (cleanEndpoint.isBlank()) {
                     ConnectionSettings()
                 } else {
-                    ConnectionSettings(cleanEndpoint, cleanModel, apiKey.trim())
+                    ConnectionSettings(cleanEndpoint, cleanModel, apiKey.trim(), includeMemories)
                 }
                 secureSettingsStore.save(next)
                 _settings.value = next

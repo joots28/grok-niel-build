@@ -47,6 +47,8 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -138,7 +140,8 @@ private fun CopyFigmaApp(viewModel: CopyViewModel) {
                     CopyPage.HOME -> HomePage(
                         onChat = { page = CopyPage.CHAT },
                         onMemory = { page = CopyPage.MEMORY },
-                        onSettings = { page = CopyPage.SETTINGS }
+                        onSettings = { page = CopyPage.SETTINGS },
+                        aiConfigured = settings.endpoint.isNotBlank() && settings.model.isNotBlank()
                     )
                     CopyPage.CHAT -> ChatPage(
                         messages = messages,
@@ -161,7 +164,10 @@ private fun CopyFigmaApp(viewModel: CopyViewModel) {
                         busy = busy,
                         error = error,
                         notice = notice,
-                        onSave = viewModel::saveSettings,
+                        onSave = { endpoint, model, key, shareMemories ->
+                            viewModel.saveSettings(endpoint, model, key, shareMemories)
+                        },
+                        includeMemories = settings.includeMemories,
                         onTest = viewModel::testConnection,
                         onClearFeedback = viewModel::clearFeedback
                     )
@@ -398,7 +404,8 @@ private fun ChatPage(
     notice: String?,
     onSend: (String) -> Unit,
     onClearFeedback: () -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    aiConfigured: Boolean
 ) {
     var draft by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().imePadding().padding(horizontal = 16.dp)) {
@@ -454,7 +461,7 @@ private fun ChatPage(
             }
         }
         Text(
-            if (busy) "COPY está preparando uma resposta…" else "As respostas de IA exigem uma conexão configurada.",
+            if (busy) "COPY está preparando uma resposta…" else if (aiConfigured) "Modelo configurado · as mensagens seguem para o provedor escolhido." else "Modo local · /ajuda, /data, /memorias e /resumo funcionam sem internet.",
             color = Muted, fontSize = 9.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
     }
@@ -535,13 +542,15 @@ private fun SettingsPage(
     busy: Boolean,
     error: String?,
     notice: String?,
-    onSave: (String, String, String) -> Unit,
+    onSave: (String, String, String, Boolean) -> Unit,
+    includeMemories: Boolean,
     onTest: () -> Unit,
     onClearFeedback: () -> Unit
 ) {
     var endpointInput by remember(endpoint) { mutableStateOf(endpoint) }
     var modelInput by remember(model) { mutableStateOf(model) }
     var keyInput by remember(apiKey) { mutableStateOf(apiKey) }
+    var includeMemoriesInput by remember(includeMemories) { mutableStateOf(includeMemories) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
         PageHeader("Central de controle", "Você escolhe como o COPY funciona") { onClearFeedback() }
         Row(
@@ -557,17 +566,50 @@ private fun SettingsPage(
         }
         Spacer(Modifier.height(22.dp))
         Text("PROVEDOR COMPATÍVEL COM OPENAI", color = Muted, fontSize = 9.sp, letterSpacing = 1.2.sp)
+        Spacer(Modifier.height(6.dp))
+        TextButton(
+            onClick = {
+                endpointInput = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
+                modelInput = "gemini-3.1-flash-lite"
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Preencher Gemini 3.1 Flash-Lite (plano gratuito)", color = Cyan, fontSize = 12.sp)
+        }
+        Text(
+            "Depois, crie uma chave em aistudio.google.com/apikey, cole no campo e salve. O plano gratuito tem limites; consulte as regras de privacidade do provedor antes de enviar dados.",
+            color = Muted, fontSize = 10.sp, lineHeight = 15.sp
+        )
         Spacer(Modifier.height(10.dp))
         ControlField("Endpoint HTTPS", endpointInput, { endpointInput = it }, "https://seu-servidor/v1/chat/completions")
         ControlField("Identificador do modelo", modelInput, { modelInput = it }, "modelo-que-vai-usar")
-        ControlField("Chave de API (opcional)", keyInput, { keyInput = it }, "Sua chave fica protegida", isSecret = true)
+        ControlField("Chave de API", keyInput, { keyInput = it }, "Cole sua chave aqui", isSecret = true)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = includeMemoriesInput,
+                onCheckedChange = { includeMemoriesInput = it },
+                colors = CheckboxDefaults.colors(
+                    checkedColor = Blue,
+                    uncheckedColor = Muted,
+                    checkmarkColor = Night
+                )
+            )
+            Spacer(Modifier.width(5.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Permitir que a IA use minhas memórias", color = White, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                Text("Desativado por padrão. Quando ativado, as notas salvas podem ser enviadas ao provedor junto com sua mensagem.", color = Muted, fontSize = 10.sp, lineHeight = 14.sp)
+            }
+        }
         if (error != null || notice != null) {
             Spacer(Modifier.height(10.dp))
             FeedbackCard(message = error ?: notice.orEmpty(), isError = error != null, onDismiss = onClearFeedback)
         }
         Spacer(Modifier.height(14.dp))
         Button(
-            onClick = { onSave(endpointInput, modelInput, keyInput) },
+            onClick = { onSave(endpointInput, modelInput, keyInput, includeMemoriesInput) },
             modifier = Modifier.fillMaxWidth().height(52.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Blue, contentColor = Night),
             shape = RoundedCornerShape(16.dp)
@@ -582,7 +624,7 @@ private fun SettingsPage(
             colors = ButtonDefaults.buttonColors(containerColor = PanelLight, contentColor = White),
             shape = RoundedCornerShape(16.dp)
         ) { Text(if (busy) "Testando…" else "Testar conexão") }
-        TextButton(onClick = { endpointInput = ""; modelInput = ""; keyInput = ""; onSave("", "", "") }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+        TextButton(onClick = { endpointInput = ""; modelInput = ""; keyInput = ""; includeMemoriesInput = false; onSave("", "", "", false) }, modifier = Modifier.align(Alignment.CenterHorizontally)) {
             Text("Remover configuração", color = Muted, fontSize = 12.sp)
         }
         Text("O COPY não inclui um modelo de IA pago. Você pode usar um provedor seu ou manter a experiência sem conexão externa.", color = Muted, fontSize = 11.sp, lineHeight = 17.sp, modifier = Modifier.padding(top = 8.dp, bottom = 20.dp))

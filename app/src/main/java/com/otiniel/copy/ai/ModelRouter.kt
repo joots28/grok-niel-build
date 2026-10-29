@@ -2,16 +2,28 @@ package com.otiniel.copy.ai
 
 import com.otiniel.copy.data.ChatMessage
 import com.otiniel.copy.data.ConnectionSettings
+import com.otiniel.copy.data.MemoryEntry
 
-/** Provider boundary: local inference and more providers can be added without coupling the UI. */
+/**
+ * Routes private commands locally and only sends opted-in memory to the remote model.
+ */
 class ModelRouter(
     private val remoteProvider: OpenAiCompatibleProvider = OpenAiCompatibleProvider()
 ) {
-    suspend fun reply(settings: ConnectionSettings, transcript: List<ChatMessage>): String {
+    suspend fun reply(
+        settings: ConnectionSettings,
+        transcript: List<ChatMessage>,
+        localMemories: List<MemoryEntry> = emptyList()
+    ): String {
+        val latestUserMessage = transcript.lastOrNull { it.role == "user" }?.content.orEmpty()
+        LocalAssistant.answerCommand(latestUserMessage, transcript, localMemories)?.let { return it }
+
         if (settings.endpoint.isBlank() || settings.model.isBlank()) {
-            return "O núcleo local do COPY está pronto para continuar a implementação, mas nenhum modelo de IA foi configurado. Abra Configurações e informe um endpoint HTTPS compatível, o nome do modelo e uma chave se o provedor exigir. Nenhuma mensagem foi enviada para a internet nesta resposta."
+            return LocalAssistant.offlineReply(latestUserMessage)
         }
-        return remoteProvider.complete(settings, transcript)
+
+        val memoriesToShare = if (settings.includeMemories) localMemories else emptyList()
+        return remoteProvider.complete(settings, transcript, memoriesToShare)
     }
 
     suspend fun testConnection(settings: ConnectionSettings): String {

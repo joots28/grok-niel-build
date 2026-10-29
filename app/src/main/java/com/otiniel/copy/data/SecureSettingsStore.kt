@@ -15,7 +15,8 @@ import javax.crypto.spec.GCMParameterSpec
 data class ConnectionSettings(
     val endpoint: String = "",
     val model: String = "",
-    val apiKey: String = ""
+    val apiKey: String = "",
+    val includeMemories: Boolean = false
 )
 
 /** Encrypts provider settings before persisting them in private app preferences. */
@@ -32,7 +33,8 @@ class SecureSettingsStore(context: Context) {
             ConnectionSettings(
                 endpoint = json.optString("endpoint", ""),
                 model = json.optString("model", ""),
-                apiKey = json.optString("apiKey", "")
+                apiKey = json.optString("apiKey", ""),
+                includeMemories = json.optBoolean("includeMemories", false)
             )
         }.getOrDefault(ConnectionSettings())
     }
@@ -42,6 +44,7 @@ class SecureSettingsStore(context: Context) {
             .put("endpoint", settings.endpoint)
             .put("model", settings.model)
             .put("apiKey", settings.apiKey)
+            .put("includeMemories", settings.includeMemories)
         writeEncrypted(json.toString())
     }
 
