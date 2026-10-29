@@ -1,6 +1,12 @@
 name: COPY Desktop Windows
 
 on:
+  push:
+    branches:
+      - copy-desktop
+    paths:
+      - "desktop/**"
+      - ".github/workflows/copy-desktop-windows.yml"
   workflow_dispatch:
 
 permissions:
