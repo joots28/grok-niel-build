@@ -1,0 +1,44 @@
+name: COPY Desktop Windows
+
+on:
+  push:
+    branches:
+      - copy-desktop
+    paths:
+      - "desktop/**"
+      - ".github/workflows/copy-desktop-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Package Windows portable executable
+        run: npm run package:win
+
+      - name: Upload Windows executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: COPY-Desktop-Windows
+          path: desktop/release/*.exe
+          if-no-files-found: error
+          retention-days: 14
