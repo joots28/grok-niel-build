@@ -109,6 +109,27 @@
       <section class="page" id="page-settings">
         <div class="content-page">
           <div class="page-intro"><div class="eyebrow">CONFIGURAÇÃO DO AMBIENTE</div><h1>Você no controle.</h1><p>Conecte um modelo local ou um endpoint compatível com o formato OpenAI Chat Completions.</p></div>
+          <section class="local-ai-panel" aria-labelledby="local-ai-title">
+            <div class="settings-section-head">
+              <span class="settings-icon">✳</span>
+              <div><h2 id="local-ai-title">IA local gratuita</h2><p>Prepare um modelo que roda neste computador, sem chave de API ou assinatura.</p></div>
+              <span class="local-ai-status-pill" id="ollama-pill">NÃO VERIFICADO</span>
+            </div>
+            <div class="local-ai-status-row">
+              <span class="local-ai-status-indicator" id="ollama-status-dot"></span>
+              <div><strong id="ollama-status-title">Verifique o Ollama</strong><p id="ollama-status-detail">O COPY precisa do motor Ollama instalado no Windows para executar modelos locais.</p></div>
+            </div>
+            <div class="local-ai-actions">
+              <button class="outline-button" type="button" id="ollama-install">1. Instalar Ollama <span>↗</span></button>
+              <button class="outline-button" type="button" id="ollama-check">2. Verificar instalação <span>↻</span></button>
+              <button class="primary-button" type="button" id="ollama-pull" disabled>3. Baixar modelo gratuito <span>↓</span></button>
+            </div>
+            <div class="ollama-progress-wrap" id="ollama-progress-wrap" hidden>
+              <div class="ollama-progress-heading"><span id="ollama-progress-label">Preparando download…</span><span id="ollama-progress-percent">0%</span></div>
+              <div class="ollama-progress-track"><div class="ollama-progress-bar" id="ollama-progress-bar"></div></div>
+            </div>
+            <div class="local-ai-footnote"><span>◈</span> Modelo recomendado: <strong>Qwen2.5 3B</strong> · download de aproximadamente 2 GB · requer internet apenas para baixar. O desempenho depois depende da memória e do processador do PC.</div>
+          </section>
           <form id="settings-form" class="settings-form">
             <div class="settings-section-head"><span class="settings-icon">⌘</span><div><h2>Provedor de IA</h2><p>O COPY não inclui uma chave de API nem exige um serviço pago específico.</p></div><span class="optional-pill">OPCIONAL</span></div>
             <label for="endpoint">Endpoint de chat completions</label><input id="endpoint" type="url" placeholder="http://localhost:11434/v1/chat/completions" required>
