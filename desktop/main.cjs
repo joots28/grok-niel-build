@@ -93,7 +93,7 @@ ipcMain.handle("settings:save", async (_event, input) => {
   const model = String(input?.model || "").trim().slice(0, 120);
   const incomingKey = String(input?.apiKey || "").trim();
   if (!model) throw new Error("Informe o identificador do modelo.");
-  let apiKey = incomingKey || previous.apiKey;
+  let apiKey = input?.clearApiKey ? "" : (incomingKey || previous.apiKey);
   const saved = { endpoint, model, encryptedApiKey: "" };
   if (apiKey) {
     if (!safeStorage.isEncryptionAvailable()) {
