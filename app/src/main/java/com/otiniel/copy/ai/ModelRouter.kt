@@ -23,7 +23,8 @@ class ModelRouter(
         // Once prepared, local inference has priority. An inference error is returned
         // to the user; it must not silently send the same private conversation online.
         if (localModelEngine?.isPrepared() == true) {
-            return localModelEngine.reply(transcript, localMemories)
+            val memoriesForLocalModel = if (settings.includeMemories) localMemories else emptyList()
+            return localModelEngine.reply(transcript, memoriesForLocalModel)
         }
 
         if (settings.endpoint.isBlank() || settings.model.isBlank()) {
