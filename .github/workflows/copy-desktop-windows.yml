@@ -30,6 +30,12 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Validate JavaScript syntax
+        run: |
+          node --check main.cjs
+          node --check preload.cjs
+          node --check renderer.js
+
       - name: Package Windows portable executable
         run: npm run package:win
 
