@@ -349,6 +349,120 @@ async function loadSettings() {
   }
 }
 
+function applyOllamaProgress(progress) {
+  const wrap = byId("ollama-progress-wrap");
+  wrap.hidden = false;
+  byId("ollama-progress-label").textContent = progress.status || "Preparando modelo…";
+  byId("ollama-progress-percent").textContent = `${Math.max(0, Math.min(100, Number(progress.percent) || 0))}%`;
+  byId("ollama-progress-bar").style.width = `${Math.max(0, Math.min(100, Number(progress.percent) || 0))}%`;
+  if (progress.phase === "error") {
+    byId("ollama-progress-label").textContent = progress.status || "O download falhou.";
+  }
+  if (progress.phase === "completed") {
+    byId("ollama-progress-label").textContent = "Modelo pronto. O COPY pode usar a IA local.";
+    byId("ollama-progress-percent").textContent = "100%";
+    byId("ollama-progress-bar").style.width = "100%";
+  }
+}
+
+function setOllamaStatusUi(status) {
+  const pill = byId("ollama-pill");
+  const dot = byId("ollama-status-dot");
+  const pullButton = byId("ollama-pull");
+  pill.classList.remove("ready", "attention");
+  dot.classList.remove("ready", "attention");
+  if (!status.reachable) {
+    pill.textContent = "INSTALAÇÃO NECESSÁRIA";
+    pill.classList.add("attention");
+    dot.classList.add("attention");
+    byId("ollama-status-title").textContent = "Ollama não está respondendo";
+    byId("ollama-status-detail").textContent = "Instale o motor pelo site oficial. Ao terminar, abra o Ollama no Windows e clique em Verificar instalação.";
+    pullButton.disabled = true;
+    pullButton.textContent = "3. Baixar modelo gratuito ↓";
+    pullButton.dataset.mode = "download";
+    return;
+  }
+  if (status.modelInstalled) {
+    pill.textContent = "IA LOCAL DISPONÍVEL";
+    pill.classList.add("ready");
+    dot.classList.add("ready");
+    byId("ollama-status-title").textContent = "O Qwen2.5 3B já está instalado";
+    byId("ollama-status-detail").textContent = "O motor local respondeu e o modelo está disponível. Ative-o para que o COPY use a IA sem uma API externa.";
+    pullButton.disabled = false;
+    pullButton.textContent = "Ativar IA local no COPY →";
+    pullButton.dataset.mode = "activate";
+    return;
+  }
+  pill.textContent = "OLLAMA CONECTADO";
+  pill.classList.add("ready");
+  dot.classList.add("ready");
+  byId("ollama-status-title").textContent = "Ollama está pronto para receber o modelo";
+  byId("ollama-status-detail").textContent = "Agora baixe o modelo gratuito Qwen2.5 3B. O download inicial requer conexão com a internet e alguns GB livres.";
+  pullButton.disabled = false;
+  pullButton.textContent = "3. Baixar modelo gratuito ↓";
+  pullButton.dataset.mode = "download";
+}
+
+async function refreshOllamaStatus(showToast = false) {
+  const checkButton = byId("ollama-check");
+  checkButton.disabled = true;
+  checkButton.textContent = "Verificando…";
+  try {
+    const status = await window.copyDesktop.getOllamaStatus();
+    setOllamaStatusUi(status);
+    if (showToast) toast(status.reachable ? (status.modelInstalled ? "Ollama e o modelo foram encontrados." : "Ollama conectado. O modelo ainda precisa ser baixado.") : "Ollama não foi encontrado; instale-o primeiro.", !status.reachable);
+    return status;
+  } catch (error) {
+    byId("ollama-status-title").textContent = "Não foi possível verificar o Ollama";
+    byId("ollama-status-detail").textContent = error.message || "Tente novamente.";
+    if (showToast) toast(error.message || "Falha ao verificar o Ollama.", true);
+    return { reachable: false, modelInstalled: false, models: [] };
+  } finally {
+    checkButton.disabled = false;
+    checkButton.textContent = "2. Verificar instalação ↻";
+  }
+}
+
+async function activateLocalModel() {
+  const result = await window.copyDesktop.saveSettings({
+    endpoint: "http://localhost:11434/v1/chat/completions",
+    model: "qwen2.5:3b",
+    apiKey: "",
+    clearApiKey: true
+  });
+  await loadSettings();
+  byId("settings-status").textContent = "IA local ativada. Nenhuma chave de API será enviada ao Ollama.";
+  updateConnectionSummary();
+  return result;
+}
+
+async function handleOllamaButton() {
+  const button = byId("ollama-pull");
+  button.disabled = true;
+  try {
+    if (button.dataset.mode === "activate") {
+      await activateLocalModel();
+      toast("IA local ativada no COPY. Abra Conversa e envie uma mensagem.");
+      return;
+    }
+    byId("ollama-progress-wrap").hidden = false;
+    byId("ollama-progress-label").textContent = "Conectando ao Ollama…";
+    byId("ollama-progress-percent").textContent = "0%";
+    byId("ollama-progress-bar").style.width = "0%";
+    await window.copyDesktop.pullOllamaModel("qwen2.5:3b");
+    await activateLocalModel();
+    await refreshOllamaStatus(false);
+    toast("Modelo instalado e IA local ativada no COPY.");
+  } catch (error) {
+    toast(error.message || "Não foi possível preparar a IA local.", true);
+    byId("ollama-progress-wrap").hidden = false;
+    byId("ollama-progress-label").textContent = error.message || "O download falhou. Verifique o Ollama e tente novamente.";
+  } finally {
+    const current = await window.copyDesktop.getOllamaStatus().catch(() => ({ reachable: false, modelInstalled: false, models: [] }));
+    setOllamaStatusUi(current);
+  }
+}
+
 function bindEvents() {
   document.querySelectorAll(".nav-item[data-page]").forEach((button) => button.addEventListener("click", () => switchPage(button.dataset.page)));
   document.querySelectorAll("[data-open-page]").forEach((button) => button.addEventListener("click", () => switchPage(button.dataset.openPage)));
@@ -438,6 +552,16 @@ function bindEvents() {
     renderHome();
     toast("Memória salva neste computador.");
   });
+  byId("ollama-install").addEventListener("click", async () => {
+    try {
+      await window.copyDesktop.openOllamaDownload();
+      toast("Instale o Ollama pelo site oficial. Quando terminar, abra o Ollama no Windows e volte aqui.");
+    } catch (error) {
+      toast(error.message || "Não foi possível abrir a página oficial.", true);
+    }
+  });
+  byId("ollama-check").addEventListener("click", () => refreshOllamaStatus(true));
+  byId("ollama-pull").addEventListener("click", handleOllamaButton);
   byId("voice-input").addEventListener("click", startVoiceInput);
 }
 
@@ -472,7 +596,9 @@ async function init() {
     toast(`Não consegui carregar os dados locais: ${error.message || error}`, true);
   }
   await loadSettings();
+  window.copyDesktop.onOllamaProgress(applyOllamaProgress);
   renderHome();
+  await refreshOllamaStatus(false);
   renderThread();
   renderHistory();
   renderMemories();
