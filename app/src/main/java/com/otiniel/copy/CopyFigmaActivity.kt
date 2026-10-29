@@ -121,6 +121,9 @@ private fun CopyFigmaApp(viewModel: CopyViewModel) {
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
     val notice by viewModel.notice.collectAsState()
+    val localModelReady by viewModel.localModelReady.collectAsState()
+    val localModelPreparing by viewModel.localModelPreparing.collectAsState()
+    val localModelProgress by viewModel.localModelProgress.collectAsState()
 
     MaterialTheme {
         Scaffold(
@@ -150,7 +153,8 @@ private fun CopyFigmaApp(viewModel: CopyViewModel) {
                         onSend = viewModel::sendMessage,
                         onClearFeedback = viewModel::clearFeedback,
                         onSettings = { page = CopyPage.SETTINGS },
-                        aiConfigured = settings.endpoint.isNotBlank() && settings.model.isNotBlank()
+                        aiConfigured = settings.endpoint.isNotBlank() && settings.model.isNotBlank(),
+                        localAiReady = localModelReady
                     )
                     CopyPage.MEMORY -> MemoryPage(
                         memories = memories,
@@ -168,6 +172,10 @@ private fun CopyFigmaApp(viewModel: CopyViewModel) {
                             viewModel.saveSettings(endpoint, model, key, shareMemories)
                         },
                         includeMemories = settings.includeMemories,
+                        localModelReady = localModelReady,
+                        localModelPreparing = localModelPreparing,
+                        localModelProgress = localModelProgress,
+                        onPrepareLocalAi = viewModel::prepareLocalAi,
                         onTest = viewModel::testConnection,
                         onClearFeedback = viewModel::clearFeedback
                     )
@@ -405,7 +413,8 @@ private fun ChatPage(
     onSend: (String) -> Unit,
     onClearFeedback: () -> Unit,
     onSettings: () -> Unit,
-    aiConfigured: Boolean
+    aiConfigured: Boolean,
+    localAiReady: Boolean
 ) {
     var draft by remember { mutableStateOf("") }
     Column(Modifier.fillMaxSize().imePadding().padding(horizontal = 16.dp)) {
@@ -461,7 +470,7 @@ private fun ChatPage(
             }
         }
         Text(
-            if (busy) "COPY está preparando uma resposta…" else if (aiConfigured) "Modelo configurado · as mensagens seguem para o provedor escolhido." else "Modo local · /ajuda, /data, /memorias e /resumo funcionam sem internet.",
+            if (busy) "COPY está preparando uma resposta…" else if (localAiReady) "IA local ativa · esta conversa não sai do aparelho." else if (aiConfigured) "Provedor online configurado · a conversa será enviada ao serviço escolhido." else "Ative a IA local em Central de controle para conversar sem internet.",
             color = Muted, fontSize = 9.sp, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
         )
     }
@@ -544,6 +553,10 @@ private fun SettingsPage(
     notice: String?,
     onSave: (String, String, String, Boolean) -> Unit,
     includeMemories: Boolean,
+    localModelReady: Boolean,
+    localModelPreparing: Boolean,
+    localModelProgress: Int,
+    onPrepareLocalAi: () -> Unit,
     onTest: () -> Unit,
     onClearFeedback: () -> Unit
 ) {
@@ -553,6 +566,37 @@ private fun SettingsPage(
     var includeMemoriesInput by remember(includeMemories) { mutableStateOf(includeMemories) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 12.dp)) {
         PageHeader("Central de controle", "Você escolhe como o COPY funciona") { onClearFeedback() }
+        Column(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp))
+                .background(Brush.verticalGradient(listOf(Color(0xFF102641), Color(0xFF0B1727))))
+                .border(1.dp, Color(0xFF294D7B), RoundedCornerShape(18.dp)).padding(15.dp),
+            verticalArrangement = Arrangement.spacedBy(9.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Filled.Lock, contentDescription = null, tint = Cyan, modifier = Modifier.size(19.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("IA LOCAL EMBUTIDA", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+                Spacer(Modifier.weight(1f))
+                Text(if (localModelReady) "PRONTA" else "OFFLINE", color = if (localModelReady) Good else Muted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+            }
+            Text(
+                if (localModelReady) "O modelo está preparado neste aparelho. O COPY prioriza essa IA e não envia suas conversas à nuvem." else "O modelo de linguagem está incluído no APK (aprox. 330 MB). Na primeira ativação, o COPY prepara os arquivos no armazenamento privado. Depois, conversa sem internet e sem chave de API.",
+                color = Muted, fontSize = 11.sp, lineHeight = 16.sp
+            )
+            if (localModelPreparing) {
+                Text("Preparando os arquivos da IA: $localModelProgress%", color = Cyan, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+            }
+            Button(
+                onClick = onPrepareLocalAi,
+                enabled = !localModelPreparing && !localModelReady,
+                modifier = Modifier.fillMaxWidth().height(48.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = if (localModelReady) PanelLight else Blue, contentColor = if (localModelReady) White else Night),
+                shape = RoundedCornerShape(14.dp)
+            ) {
+                Text(when { localModelReady -> "IA local pronta"; localModelPreparing -> "Preparando… $localModelProgress%"; else -> "Ativar IA local embutida" }, fontWeight = FontWeight.Bold)
+            }
+        }
+        Spacer(Modifier.height(18.dp))
         Row(
             Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(Color(0xFF0B1725)).border(1.dp, Color(0xFF183148), RoundedCornerShape(17.dp)).padding(14.dp),
             verticalAlignment = Alignment.CenterVertically
