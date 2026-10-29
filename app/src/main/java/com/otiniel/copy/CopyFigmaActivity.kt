@@ -140,8 +140,7 @@ private fun CopyFigmaApp(viewModel: CopyViewModel) {
                     CopyPage.HOME -> HomePage(
                         onChat = { page = CopyPage.CHAT },
                         onMemory = { page = CopyPage.MEMORY },
-                        onSettings = { page = CopyPage.SETTINGS },
-                        aiConfigured = settings.endpoint.isNotBlank() && settings.model.isNotBlank()
+                        onSettings = { page = CopyPage.SETTINGS }
                     )
                     CopyPage.CHAT -> ChatPage(
                         messages = messages,
