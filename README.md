@@ -78,3 +78,7 @@ Não coloque chaves, tokens, arquivos `.env` ou credenciais no GitHub.
 3. Provedores de IA substituíveis; serviços pagos nunca são uma dependência obrigatória do projeto.
 4. Código dividido por responsabilidade e fácil de inspecionar.
 5. O design final deve ser comparado com o Figma antes de declarar fidelidade visual.
+
+## Interface COPY dark blue
+
+A versão em `work/copy-figma-blue-ui` adiciona a interface mobile em tema dark azul, globo luminoso, navegação por Início/Conversa/Memória/Ajustes e integração com o `CopyViewModel` existente. Esta branch é de validação e não altera a `main`.
