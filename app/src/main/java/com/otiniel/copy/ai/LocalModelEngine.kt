@@ -56,8 +56,9 @@ class LocalModelEngine(context: Context) {
                 temporary.outputStream().buffered().use { output ->
                     val buffer = ByteArray(DEFAULT_BUFFER_SIZE * 4)
                     var copied = 0L
-                    var count: Int
-                    while (input.read(buffer).also { count = it } >= 0) {
+                    while (true) {
+                        val count = input.read(buffer)
+                        if (count < 0) break
                         if (count == 0) continue
                         output.write(buffer, 0, count)
                         copied += count
