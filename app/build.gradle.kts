@@ -57,7 +57,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
 
     // On-device LLM runtime. Inference runs locally; no API key or cloud endpoint required.
-    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
