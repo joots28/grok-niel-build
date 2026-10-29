@@ -246,4 +246,25 @@ h1, h2, p { margin-top: 0; }
   .hero-orb { transform: scale(.84); }
   .prompts-heading { margin-top: 20px; }
 }
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }\n.local-ai-panel { margin-bottom: 16px; padding: 20px 22px 17px; border: 1px solid rgba(78,161,255,.25); border-radius: 11px; background: radial-gradient(ellipse at 100% 0%, rgba(36,105,175,.12), transparent 42%), linear-gradient(135deg, rgba(13,24,43,.97), rgba(9,16,28,.97)); }
+.local-ai-panel .settings-section-head { margin-bottom: 16px; }
+.local-ai-status-pill { margin-left: auto; flex: 0 0 auto; font-size: 8px; letter-spacing: .09em; color: #95a8c2; border: 1px solid #2b3c55; background: rgba(20,32,51,.65); border-radius: 4px; padding: 5px 7px; }
+.local-ai-status-pill.ready { color: #8de6c5; border-color: rgba(116,229,191,.28); background: rgba(116,229,191,.06); }
+.local-ai-status-pill.attention { color: #ffd48c; border-color: rgba(255,202,111,.28); background: rgba(255,202,111,.05); }
+.local-ai-status-row { display: flex; align-items: flex-start; gap: 11px; padding: 13px 14px; border: 1px solid #1d2e47; border-radius: 8px; background: rgba(6,12,22,.56); }
+.local-ai-status-indicator { width: 7px; height: 7px; flex: 0 0 7px; margin-top: 5px; border-radius: 50%; background: #6e8097; }
+.local-ai-status-indicator.ready { background: var(--good); box-shadow: 0 0 9px rgba(116,229,191,.45); }
+.local-ai-status-indicator.attention { background: #ffcf7a; box-shadow: 0 0 9px rgba(255,207,122,.3); }
+.local-ai-status-row strong { font-size: 11px; color: #d7e4f6; font-weight: 650; }
+.local-ai-status-row p { margin: 5px 0 0; color: #7589a5; font-size: 10px; line-height: 1.65; }
+.local-ai-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 13px; }
+.local-ai-actions .outline-button, .local-ai-actions .primary-button { min-height: 36px; font-size: 10px; padding: 0 12px; gap: 10px; }
+.local-ai-actions .primary-button:disabled { filter: grayscale(.6); opacity: .4; }
+.ollama-progress-wrap { margin-top: 14px; padding: 11px 12px; background: rgba(5,11,20,.52); border: 1px solid #1b2b43; border-radius: 7px; }
+.ollama-progress-heading { display: flex; justify-content: space-between; gap: 12px; font-size: 10px; color: #9db4d1; margin-bottom: 9px; }
+.ollama-progress-heading span:last-child { color: #7ebeff; font-variant-numeric: tabular-nums; }
+.ollama-progress-track { height: 5px; border-radius: 99px; overflow: hidden; background: #1b2a40; }
+.ollama-progress-bar { width: 0; height: 100%; background: linear-gradient(90deg, #3988de, #72e4ff); box-shadow: 0 0 10px rgba(78,161,255,.36); transition: width .35s ease; }
+.local-ai-footnote { margin-top: 14px; color: #637995; font-size: 9px; line-height: 1.7; }
+.local-ai-footnote > span { color: #7acfff; margin-right: 4px; }
+.local-ai-footnote strong { color: #a6bdd9; font-weight: 650; }
