@@ -150,7 +150,8 @@ private fun CopyFigmaApp(viewModel: CopyViewModel) {
                         notice = notice,
                         onSend = viewModel::sendMessage,
                         onClearFeedback = viewModel::clearFeedback,
-                        onSettings = { page = CopyPage.SETTINGS }
+                        onSettings = { page = CopyPage.SETTINGS },
+                        aiConfigured = settings.endpoint.isNotBlank() && settings.model.isNotBlank()
                     )
                     CopyPage.MEMORY -> MemoryPage(
                         memories = memories,
