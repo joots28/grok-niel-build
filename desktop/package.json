@@ -1,0 +1,41 @@
+{
+  "name": "copy-desktop",
+  "version": "0.1.0",
+  "description": "COPY personal assistant desktop app",
+  "private": true,
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "package:win": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "35.1.5",
+    "electron-builder": "26.0.12"
+  },
+  "build": {
+    "appId": "com.otiniel.copydesktop",
+    "productName": "COPY Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "index.html",
+      "styles.css",
+      "renderer.js",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "COPY-Desktop-${version}-${arch}.${ext}"
+    }
+  }
+}
