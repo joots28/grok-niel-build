@@ -107,21 +107,38 @@ ipcMain.handle("settings:save", async (_event, input) => {
 });
 
 ipcMain.handle("state:load", async () => {
-  const state = await readJson(STATE_FILE, { messages: [], memories: [] });
+  const state = await readJson(STATE_FILE, { conversations: [], currentConversationId: null, memories: [] });
+  const conversations = Array.isArray(state.conversations) ? state.conversations.slice(-200).map((conversation) => ({
+    id: String(conversation.id || "").slice(0, 80),
+    title: String(conversation.title || "Nova conversa").slice(0, 160),
+    updatedAt: String(conversation.updatedAt || "").slice(0, 40),
+    messages: (Array.isArray(conversation.messages) ? conversation.messages.slice(-300) : []).map((item) => ({
+      id: String(item.id || "").slice(0, 80),
+      role: item.role === "assistant" ? "assistant" : "user",
+      content: String(item.content || "").slice(0, 20000),
+      time: String(item.time || "").slice(0, 40)
+    }))
+  })) : [];
   return {
-    messages: Array.isArray(state.messages) ? state.messages.slice(-300) : [],
+    conversations,
+    currentConversationId: typeof state.currentConversationId === "string" ? state.currentConversationId : null,
     memories: Array.isArray(state.memories) ? state.memories.slice(-200) : []
   };
 });
 
 ipcMain.handle("state:save", async (_event, input) => {
-  const messages = Array.isArray(input?.messages) ? input.messages.slice(-300) : [];
+  const conversations = Array.isArray(input?.conversations) ? input.conversations.slice(-200) : [];
   const memories = Array.isArray(input?.memories) ? input.memories.slice(-200) : [];
-  const safeMessages = messages.map((item) => ({
-    id: String(item.id || "").slice(0, 80),
-    role: item.role === "assistant" ? "assistant" : "user",
-    content: String(item.content || "").slice(0, 20000),
-    time: String(item.time || "").slice(0, 40)
+  const safeConversations = conversations.map((conversation) => ({
+    id: String(conversation.id || "").slice(0, 80),
+    title: String(conversation.title || "Nova conversa").slice(0, 160),
+    updatedAt: String(conversation.updatedAt || "").slice(0, 40),
+    messages: (Array.isArray(conversation.messages) ? conversation.messages.slice(-300) : []).map((item) => ({
+      id: String(item.id || "").slice(0, 80),
+      role: item.role === "assistant" ? "assistant" : "user",
+      content: String(item.content || "").slice(0, 20000),
+      time: String(item.time || "").slice(0, 40)
+    }))
   }));
   const safeMemories = memories.map((item) => ({
     id: String(item.id || "").slice(0, 80),
@@ -129,7 +146,10 @@ ipcMain.handle("state:save", async (_event, input) => {
     content: String(item.content || "").slice(0, 4000),
     time: String(item.time || "").slice(0, 40)
   }));
-  await writeJson(STATE_FILE, { messages: safeMessages, memories: safeMemories });
+  const currentConversationId = safeConversations.some((item) => item.id === input?.currentConversationId)
+    ? input.currentConversationId
+    : (safeConversations[safeConversations.length - 1]?.id || null);
+  await writeJson(STATE_FILE, { conversations: safeConversations, currentConversationId, memories: safeMemories });
   return { success: true };
 });
 
